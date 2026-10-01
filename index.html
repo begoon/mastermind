@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Mastermind Guesser</title>
+<style>
+    :root {
+        --bg: #f4f1ea;
+        --panel: #ffffff;
+        --text: #1d1c1a;
+        --muted: #6b675f;
+        --border: #dcd7cc;
+        --accent: #2b5fd9;
+        --accent-text: #ffffff;
+        --warn-bg: #fff4d6; --warn-text: #6b4b00;
+        --error-bg: #fde3e1; --error-text: #8a1c14;
+        --info-bg: #e3ecfd; --info-text: #1c3f8a;
+        --win-bg: #e0f5e6; --win-text: #145a2b;
+        --c1: #e5484d; --c2: #f0862c; --c3: #f2c60c; --c4: #3bb55d; --c5: #3b82f6; --c6: #9b59e6;
+    }
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg: #15161a;
+            --panel: #1f2127;
+            --text: #ececec;
+            --muted: #9a9ca3;
+            --border: #34373f;
+            --accent: #5b8cff;
+            --accent-text: #0d1220;
+            --warn-bg: #3b2f0d; --warn-text: #ffd56b;
+            --error-bg: #42191a; --error-text: #ff9a94;
+            --info-bg: #15264a; --info-text: #9ab8ff;
+            --win-bg: #143321; --win-text: #7fdc9b;
+        }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; overflow-x: hidden; }
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.45;
+        padding: 16px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    }
+    main { max-width: 560px; margin: 0 auto; display: grid; gap: 14px; min-width: 0; }
+
+    h1 { font-size: 1.35rem; margin: 4px 0 0; }
+    .intro { color: var(--muted); margin: 0; font-size: 0.95rem; }
+    .intro b { color: var(--text); }
+
+    .panel {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 16px;
+    }
+
+    .try-label { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 8px; }
+    .guess-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .pegs { display: inline-flex; gap: 8px; }
+    .pegs.dim { opacity: 0.35; }
+    .peg {
+        width: 52px; height: 52px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 1.25rem; color: #fff;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+        box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18), 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .peg-small { width: 30px; height: 30px; font-size: 0.85rem; }
+    .c1 { background: var(--c1); } .c2 { background: var(--c2); } .c3 { background: var(--c3); color: #3a2e00; text-shadow: none; }
+    .c4 { background: var(--c4); } .c5 { background: var(--c5); } .c6 { background: var(--c6); }
+    .guess-number { font-variant-numeric: tabular-nums; font-size: 1.6rem; font-weight: 700; letter-spacing: 0.15em; }
+    .thinking { color: var(--muted); font-size: 0.9rem; margin: 8px 0 0; }
+
+    .question { margin: 14px 0 10px; font-weight: 600; }
+    .inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { min-width: 0; }
+    .field label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; }
+    .field input {
+        width: 100%; min-width: 0; font-size: 1.6rem; text-align: center; padding: 10px;
+        border: 2px solid var(--border); border-radius: 10px;
+        background: var(--bg); color: var(--text);
+    }
+    .field input:focus { outline: none; border-color: var(--accent); }
+    .chips { display: flex; gap: 6px; margin-top: 8px; }
+    .chip {
+        flex: 1; min-width: 0; padding: 0; min-height: 40px; border-radius: 8px; border: 1px solid var(--border);
+        background: var(--panel); color: var(--text); font-size: 1rem; cursor: pointer;
+    }
+    .chip:active { background: var(--border); }
+
+    .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+    button.primary {
+        flex: 1 1 160px; min-height: 48px; font-size: 1.05rem; font-weight: 600;
+        background: var(--accent); color: var(--accent-text); border: 0; border-radius: 10px; cursor: pointer;
+    }
+    button.secondary {
+        flex: 0 1 auto; min-height: 48px; padding: 0 16px; font-size: 1rem;
+        background: transparent; color: var(--text); border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+    }
+    button:disabled { opacity: 0.45; cursor: default; }
+
+    .message { margin-top: 12px; padding: 10px 12px; border-radius: 10px; font-size: 0.95rem; }
+    .message.warn { background: var(--warn-bg); color: var(--warn-text); }
+    .message.error { background: var(--error-bg); color: var(--error-text); }
+    .message.info { background: var(--info-bg); color: var(--info-text); }
+
+    .result.win { background: var(--win-bg); color: var(--win-text); border-color: transparent; }
+    .result h2 { margin: 0 0 6px; font-size: 1.3rem; }
+    .result p { margin: 0 0 12px; }
+
+    .remaining { color: var(--muted); font-size: 0.9rem; margin: 0; }
+    .candidates { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .cand { font-variant-numeric: tabular-nums; font-size: 0.85rem; padding: 2px 6px; border-radius: 6px; background: var(--bg); border: 1px solid var(--border); }
+    .cand-current { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+    .history { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .history-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .history-index { color: var(--muted); width: 2.2em; font-size: 0.9rem; }
+    .score { font-size: 0.95rem; }
+    .history-remaining { margin-left: auto; color: var(--muted); font-size: 0.85rem; }
+    .history:empty::before { content: "No guesses yet."; color: var(--muted); font-size: 0.9rem; }
+
+    .hint { color: var(--muted); font-size: 0.85rem; margin: 10px 0 0; }
+
+    @media (max-width: 380px) {
+        .peg { width: 44px; height: 44px; font-size: 1.1rem; }
+        .guess-number { font-size: 1.3rem; }
+    }
+</style>
+</head>
+<body>
+<main>
+    <header>
+        <h1>Mastermind: the computer guesses your code</h1>
+        <p class="intro">Think of a secret code: <b>4 digits</b>, each from <b>1 to 6</b> (repeats allowed).
+            After each guess tell me how many <b>bulls</b> (right digit, right place) and <b>cows</b>
+            (right digit, wrong place) it scored. Knuth's strategy needs at most 5 guesses.</p>
+    </header>
+
+    <section class="panel" aria-live="polite">
+        <p class="try-label" id="try-label">Guess #1</p>
+        <div class="guess-row">
+            <div class="pegs" id="guess-pegs"></div>
+            <div class="guess-number" id="guess-number"></div>
+        </div>
+        <p class="thinking" id="thinking" hidden>Thinking…</p>
+
+        <div id="input-panel">
+            <form id="feedback-form" novalidate>
+                <p class="question">How does this guess score against your code?</p>
+                <div class="inputs">
+                    <div class="field">
+                        <label for="bulls">Bulls (in place)</label>
+                        <input id="bulls" type="number" inputmode="numeric" pattern="[0-4]" min="0" max="4" step="1" autocomplete="off" enterkeyhint="next">
+                        <div class="chips">
+                            <button type="button" class="chip" data-target="bulls" data-value="0">0</button>
+                            <button type="button" class="chip" data-target="bulls" data-value="1">1</button>
+                            <button type="button" class="chip" data-target="bulls" data-value="2">2</button>
+                            <button type="button" class="chip" data-target="bulls" data-value="3">3</button>
+                            <button type="button" class="chip" data-target="bulls" data-value="4">4</button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label for="cows">Cows (by value)</label>
+                        <input id="cows" type="number" inputmode="numeric" pattern="[0-4]" min="0" max="4" step="1" autocomplete="off" enterkeyhint="done">
+                        <div class="chips">
+                            <button type="button" class="chip" data-target="cows" data-value="0">0</button>
+                            <button type="button" class="chip" data-target="cows" data-value="1">1</button>
+                            <button type="button" class="chip" data-target="cows" data-value="2">2</button>
+                            <button type="button" class="chip" data-target="cows" data-value="3">3</button>
+                            <button type="button" class="chip" data-target="cows" data-value="4">4</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <button type="submit" class="primary">Submit answer</button>
+                    <button type="button" class="secondary" id="undo" disabled>Undo</button>
+                    <button type="button" class="secondary" id="restart">Restart</button>
+                </div>
+            </form>
+            <p class="hint">Tap a number under each field, or type both and press Enter.</p>
+        </div>
+
+        <div class="message" id="message" hidden></div>
+    </section>
+
+    <section class="panel result" id="result-panel" hidden>
+        <h2 id="result-title"></h2>
+        <p id="result-text"></p>
+        <div class="actions">
+            <button type="button" class="primary" onclick="document.getElementById('restart').click()">Play again</button>
+            <button type="button" class="secondary" onclick="document.getElementById('undo').click()">Undo last answer</button>
+        </div>
+    </section>
+
+    <section class="panel">
+        <p class="remaining" id="remaining"></p>
+        <div class="candidates" id="candidates" hidden></div>
+    </section>
+
+    <section class="panel">
+        <p class="try-label">Previous guesses</p>
+        <ol class="history" id="history"></ol>
+    </section>
+</main>
+<script src="script.js"></script>
+</body>
+</html>
