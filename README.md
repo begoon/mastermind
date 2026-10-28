@@ -39,7 +39,7 @@ The guesser uses [Knuth's five-guess algorithm](https://en.wikipedia.org/wiki/Ma
 
 Across all 1296 secrets this solves every code in at most 5 guesses, 4.476
 on average. The implementation is a JavaScript port of the Zig `Game` struct
-from a companion multi-language solver (Python, V and Zig) and produces the
+from a [companion multi-language solver](knuth/README.md) (Python, V and Zig) and produces the
 same guess sequence as those versions.
 
 ## Files
